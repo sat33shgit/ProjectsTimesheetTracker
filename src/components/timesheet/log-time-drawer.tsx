@@ -46,6 +46,7 @@ interface LogTimeDrawerProps {
   entry?: TimesheetEntry | null;
   projects: Project[];
   onSaved: () => void;
+  initialProjectId?: string | null;
 }
 
 const QUICK_HOURS = [0.25, 0.5, 1, 2, 4, 8];
@@ -56,6 +57,7 @@ export function LogTimeDrawer({
   entry,
   projects,
   onSaved,
+  initialProjectId,
 }: LogTimeDrawerProps) {
   const isEditing = !!entry;
   const [saving, setSaving] = useState(false);
@@ -91,13 +93,13 @@ export function LogTimeDrawer({
       });
     } else {
       reset({
-        projectId: "",
+        projectId: initialProjectId || "",
         date: new Date().toISOString().split("T")[0],
         hours: 1,
         details: "",
       });
     }
-  }, [entry, reset, open]);
+  }, [entry, reset, open, initialProjectId]);
 
   const onSubmit = async (data: FormData) => {
     setSaving(true);
