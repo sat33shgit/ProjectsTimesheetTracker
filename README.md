@@ -29,6 +29,21 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Tech Stack
+
+- **Framework:** Next.js (v16.1.6) with the App Router
+- **UI / View:** React (v19.2.3)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS (v4) + PostCSS
+- **ORM / Database:** Drizzle ORM / drizzle-kit and @vercel/postgres
+- **State Management:** Zustand
+- **Forms & Validation:** react-hook-form, @hookform/resolvers, Zod
+- **Charts & Visualization:** Recharts
+- **Icons & UI Utilities:** Lucide React, @base-ui/react, clsx, class-variance-authority, cmdk
+- **Dates & Utils:** date-fns
+- **Excel import/export:** xlsx
+- **Toasts / Notifications:** sonner
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
