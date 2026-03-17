@@ -109,11 +109,11 @@ export function FigmaUrlDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
+      <SheetContent className="sm:max-w-md overflow-y-auto px-6 sm:px-8">
         <SheetHeader>
           <SheetTitle>{isEditing ? "Edit URL" : "Add URL"}</SheetTitle>
         </SheetHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6 px-1">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6">
           <div className="space-y-2">
             <Label htmlFor="application">Application *</Label>
             <Input

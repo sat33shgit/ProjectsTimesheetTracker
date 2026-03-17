@@ -127,11 +127,11 @@ export function LogTimeDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
+      <SheetContent className="sm:max-w-md overflow-y-auto px-6 sm:px-8">
         <SheetHeader>
           <SheetTitle>{isEditing ? "Edit Entry" : "Log Time"}</SheetTitle>
         </SheetHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6 px-1">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6">
           <div className="space-y-2">
             <Label htmlFor="projectId">Project *</Label>
             <select
