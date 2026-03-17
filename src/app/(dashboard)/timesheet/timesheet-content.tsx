@@ -57,6 +57,7 @@ export default function TimesheetContent() {
   const [collapsedProjects, setCollapsedProjects] = useState<Record<number, boolean>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<TimesheetEntry | null>(null);
+  const [initialProjectId, setInitialProjectId] = useState<string | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<TimesheetEntry | null>(null);
   const [settings, setSettings] = useState({ hourly_rate_cad: "10", conversion_rate_inr: "60" });
 
@@ -209,6 +210,10 @@ export default function TimesheetContent() {
     });
   };
 
+  useEffect(() => {
+    if (!drawerOpen) setInitialProjectId(null);
+  }, [drawerOpen]);
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -252,7 +257,7 @@ export default function TimesheetContent() {
               <option key={p.id} value={String(p.id)}>{p.name}</option>
             ))}
           </select>
-          <Button size="sm" onClick={() => { setEditEntry(null); setDrawerOpen(true); }}>
+          <Button size="sm" onClick={() => { setEditEntry(null); setInitialProjectId(null); setDrawerOpen(true); }}>
             <Plus className="size-4 mr-1" /> Log Time
           </Button>
           <Button size="sm" variant="ghost" onClick={handleExport} aria-label="Export Excel">
@@ -297,9 +302,11 @@ export default function TimesheetContent() {
                   <Fragment key={`group-wrap-${group.projectId}`}>
                     <TableRow key={`group-${group.projectId}`} className="bg-zinc-100/70">
                       <TableCell colSpan={6}>
-                        <button
-                          type="button"
+                        <div
+                          role="button"
+                          tabIndex={0}
                           onClick={() => toggleProjectCollapse(group.projectId)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleProjectCollapse(group.projectId); } }}
                           className="flex w-full items-center justify-between gap-3 text-left"
                           aria-expanded={!isCollapsed}
                           aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.projectName} group`}
@@ -308,10 +315,25 @@ export default function TimesheetContent() {
                             {isCollapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
                             <span className="font-semibold">{group.projectName}</span>
                           </div>
-                          <span className="text-sm text-muted-foreground font-mono">
-                            {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
-                          </span>
-                        </button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditEntry(null);
+                                setInitialProjectId(String(group.projectId));
+                                setDrawerOpen(true);
+                              }}
+                              aria-label={`Add entry to ${group.projectName}`}
+                            >
+                              <Plus className="size-4" />
+                            </Button>
+                            <span className="text-sm text-muted-foreground font-mono">
+                              {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
+                            </span>
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {!isCollapsed && group.entries.map((entry, i) => {
@@ -369,6 +391,7 @@ export default function TimesheetContent() {
         entry={editEntry}
         projects={projects}
         onSaved={fetchEntries}
+        initialProjectId={initialProjectId}
       />
 
       {/* Delete Confirmation */}
