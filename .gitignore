@@ -42,3 +42,7 @@ next-env.d.ts
 
 # project docs
 ProjectsTimesheet Requirements.txt
+
+
+# Ignore local AI editor rules
+.github/instructions/codacy.instructions.md

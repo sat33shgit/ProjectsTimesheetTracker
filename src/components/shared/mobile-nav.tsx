@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/timesheet", label: "Timesheet", icon: Clock },
   { href: "/figma-versions", label: "Versions", icon: Palette },
   { href: "/figma-urls", label: "URLs", icon: Link2 },
@@ -29,7 +29,7 @@ export function MobileNav() {
       aria-label="Mobile navigation"
     >
       {navItems.map((item) => {
-        const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link
             key={item.href}

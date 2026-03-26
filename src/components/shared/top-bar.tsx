@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const pageTitles: Record<string, string> = {
-  "/": "Dashboard",
+  "/dashboard": "Dashboard",
   "/timesheet": "Timesheet",
   "/figma-versions": "Figma Versions",
   "/figma-urls": "Figma URLs",

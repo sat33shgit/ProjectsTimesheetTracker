@@ -49,7 +49,7 @@ interface LogTimeDrawerProps {
   initialProjectId?: string | null;
 }
 
-const QUICK_HOURS = [0.25, 0.5, 1, 2, 4, 8];
+const QUICK_HOURS = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
 export function LogTimeDrawer({
   open,

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/timesheet", label: "Timesheet", icon: Clock },
   { href: "/figma-versions", label: "Figma Versions", icon: Palette },
   { href: "/figma-urls", label: "Figma URLs", icon: Link2 },
@@ -47,7 +47,7 @@ export function Sidebar() {
 
       <nav className="flex-1 py-4 space-y-1 px-2" role="navigation" aria-label="Main navigation">
         {navItems.map((item) => {
-          const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const linkContent = (
             <Link
               href={item.href}
