@@ -39,6 +39,11 @@ interface GroupedEntries {
   projectName: string;
   totalHours: number;
   entries: TimesheetEntry[];
+  firstDate: string;
+  lastDate: string;
+  daysDifference: number;
+  monthsDiff: number;
+  durationDisplay: string;
 }
 
 export default function TimesheetContent() {
@@ -124,10 +129,41 @@ export default function TimesheetContent() {
         projectName: entry.projectName,
         totalHours: Number(entry.hours),
         entries: [entry],
+        firstDate: entry.date,
+        lastDate: entry.date,
+        daysDifference: 0,
+        monthsDiff: 0,
+        durationDisplay: "",
       });
     });
 
-    return Array.from(groups.values());
+    // Calculate date ranges for each group
+    const result = Array.from(groups.values()).map(group => {
+      const dates = group.entries.map(e => new Date(e.date));
+      const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      const daysDifference = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      // Calculate months difference
+      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + 
+                        (lastDate.getMonth() - firstDate.getMonth()) + 1;
+      
+      // Determine display unit
+      const durationDisplay = daysDifference > 31 
+        ? `${monthsDiff} month${monthsDiff !== 1 ? 's' : ''}` 
+        : `${daysDifference} day${daysDifference !== 1 ? 's' : ''}`;
+
+      return {
+        ...group,
+        firstDate: firstDate.toISOString().split('T')[0],
+        lastDate: lastDate.toISOString().split('T')[0],
+        daysDifference,
+        monthsDiff,
+        durationDisplay
+      };
+    });
+
+    return result;
   }, [entries]);
 
   useEffect(() => {
@@ -314,6 +350,9 @@ export default function TimesheetContent() {
                           <div className="flex items-center gap-2">
                             {isCollapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
                             <span className="font-semibold">{group.projectName}</span>
+                            <span className="text-sm text-muted-foreground font-mono">
+                              {formatDate(group.firstDate)} → {formatDate(group.lastDate)} <span className="ml-1 text-emerald-600 font-medium">({group.durationDisplay})</span>
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Button
@@ -329,9 +368,9 @@ export default function TimesheetContent() {
                             >
                               <Plus className="size-4" />
                             </Button>
-                            <span className="text-sm text-muted-foreground font-mono">
-                              {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
-                            </span>
+                             <span className="text-sm text-muted-foreground font-mono">
+                               {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
+                             </span>
                           </div>
                         </div>
                       </TableCell>
