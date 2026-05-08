@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { formatUTCDateForInput } from "@/lib/utils/date";
 
 const schema = z.object({
   projectId: z.string().min(1, "Project is required"),
@@ -73,7 +74,13 @@ export function LogTimeDrawer({
     resolver: zodResolver(schema),
     defaultValues: {
       projectId: "",
-      date: new Date().toISOString().split("T")[0],
+      date: (() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      })(),
       hours: 1,
       details: "",
     },
@@ -85,16 +92,20 @@ export function LogTimeDrawer({
     if (entry) {
       reset({
         projectId: String(entry.projectId),
-        date: typeof entry.date === "string"
-          ? entry.date.split("T")[0]
-          : new Date(entry.date).toISOString().split("T")[0],
+        date: formatUTCDateForInput(entry.date),
         hours: Number(entry.hours),
         details: entry.details || "",
       });
     } else {
       reset({
         projectId: initialProjectId || "",
-        date: new Date().toISOString().split("T")[0],
+        date: (() => {
+          const d = new Date();
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          return `${yyyy}-${mm}-${dd}`;
+        })(),
         hours: 1,
         details: "",
       });

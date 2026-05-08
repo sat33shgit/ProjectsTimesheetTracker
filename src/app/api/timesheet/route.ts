@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { timesheetEntries, projects } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { localDateToUTC } from "@/lib/utils/date";
 
 export async function GET(request: Request) {
   try {
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       .insert(timesheetEntries)
       .values({
         projectId: Number(projectId),
-        date: new Date(date),
+        date: localDateToUTC(date),
         hours: String(hours),
         details: details || null,
       })

@@ -1,4 +1,5 @@
 import { format, parseISO } from "date-fns";
+import { utcDateToLocal } from "./date";
 
 export function formatCurrency(amount: number, currency: "CAD" | "INR" = "CAD"): string {
   if (currency === "INR") {
@@ -26,26 +27,16 @@ export function formatHours(hours: number): string {
 
 export function formatDate(date: Date | string): string {
   if (!date) return "—";
-  let d: Date;
-  if (typeof date === "string") {
-    d = parseISO(date);
-    if (isNaN(d.getTime())) d = new Date(date);
-  } else {
-    d = date;
-  }
-  if (isNaN(d.getTime())) return "—";
-  return format(d, "MMM dd, yyyy");
+  // Convert UTC date from database to local timezone before formatting
+  const localDate = utcDateToLocal(date);
+  if (isNaN(localDate.getTime())) return "—";
+  return format(localDate, "MMM dd, yyyy");
 }
 
 export function formatDateISO(date: Date | string): string {
   if (!date) return "";
-  let d: Date;
-  if (typeof date === "string") {
-    d = parseISO(date);
-    if (isNaN(d.getTime())) d = new Date(date);
-  } else {
-    d = date;
-  }
-  if (isNaN(d.getTime())) return "";
-  return format(d, "yyyy-MM-dd");
+  // Convert UTC date from database to local timezone before formatting
+  const localDate = utcDateToLocal(date);
+  if (isNaN(localDate.getTime())) return "";
+  return format(localDate, "yyyy-MM-dd");
 }

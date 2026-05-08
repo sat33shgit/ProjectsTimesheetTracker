@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { timesheetEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { localDateToUTC } from "@/lib/utils/date";
 
 export async function PUT(
   request: Request,
@@ -18,7 +19,9 @@ export async function PUT(
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (projectId !== undefined) updates.projectId = Number(projectId);
-    if (date !== undefined) updates.date = new Date(date);
+    if (date !== undefined) {
+      updates.date = localDateToUTC(date);
+    }
     if (hours !== undefined) updates.hours = String(hours);
     if (details !== undefined) updates.details = details || null;
 
