@@ -17,9 +17,10 @@ export function localDateToUTC(dateString: string): Date {
 export function utcDateToLocal(utcDate: Date | string): Date {
   let dateObj: Date;
   if (typeof utcDate === "string") {
-    // If it's a date-only string like 'YYYY-MM-DD', parse as UTC midnight explicitly
+    // If it's a date-only string like 'YYYY-MM-DD' (from to_char), parse as local date directly
     if (/^\d{4}-\d{2}-\d{2}$/.test(utcDate)) {
-      dateObj = new Date(`${utcDate}T00:00:00Z`);
+      const [year, month, day] = utcDate.split('-').map(Number);
+      dateObj = new Date(year, month - 1, day);
     } else {
       dateObj = new Date(utcDate);
     }
