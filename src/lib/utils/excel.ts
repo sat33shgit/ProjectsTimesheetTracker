@@ -4,6 +4,7 @@ export interface TimesheetRow {
   projectName: string;
   date: string;
   hours: number;
+  subcategory: string;
   details: string;
 }
 
@@ -62,6 +63,7 @@ export function parseExcelBuffer(buffer: ArrayBuffer): ImportPreview {
           projectName: String(getVal(row, "Project Name", "project_name", "Project") || ""),
           date: dateStr,
           hours: Number(getVal(row, "Time (hrs)", "Hours", "hours", "Time") || 0),
+          subcategory: String(getVal(row, "Subcategory", "subcategory") || ""),
           details: String(getVal(row, "Details", "details") || ""),
         };
       }).filter((r) => r.projectName && r.hours > 0);
@@ -87,7 +89,7 @@ export function parseExcelBuffer(buffer: ArrayBuffer): ImportPreview {
 
 export function generateExcelBuffer(data: {
   dashboardSummary: { rate: number; projects: { name: string; totalHours: number; cad: number; inr: number }[]; grandTotal: { totalHours: number; cad: number; inr: number } };
-  timesheet: { projectName: string; date: string; hours: number; details: string }[];
+  timesheet: { projectName: string; date: string; hours: number; subcategory: string; details: string }[];
   figmaVersions: { application: string; version: number; details: string }[];
   figmaUrls: { application: string; url: string; details: string }[];
 }): Buffer {
@@ -111,6 +113,7 @@ export function generateExcelBuffer(data: {
   const tsData = data.timesheet.map((r) => ({
     "Project Name": r.projectName,
     Date: r.date,
+    Subcategory: r.subcategory,
     "Time (hrs)": r.hours,
     Details: r.details,
   }));

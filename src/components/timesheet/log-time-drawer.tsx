@@ -22,6 +22,7 @@ const schema = z.object({
   projectId: z.string().min(1, "Project is required"),
   date: z.string().min(1, "Date is required"),
   hours: z.number().min(0.25, "Min 0.25 hrs").max(24, "Max 24 hrs"),
+  subcategory: z.string().optional(),
   details: z.string().optional(),
 });
 
@@ -38,6 +39,7 @@ interface TimesheetEntry {
   projectName: string;
   date: string;
   hours: string;
+  subcategory?: string | null;
   details: string | null;
 }
 
@@ -48,6 +50,7 @@ interface LogTimeDrawerProps {
   projects: Project[];
   onSaved: () => void;
   initialProjectId?: string | null;
+  initialSubcategory?: string | null;
 }
 
 const QUICK_HOURS = [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
@@ -59,6 +62,7 @@ export function LogTimeDrawer({
   projects,
   onSaved,
   initialProjectId,
+  initialSubcategory,
 }: LogTimeDrawerProps) {
   const isEditing = !!entry;
   const [saving, setSaving] = useState(false);
@@ -82,6 +86,7 @@ export function LogTimeDrawer({
         return `${yyyy}-${mm}-${dd}`;
       })(),
       hours: 1,
+      subcategory: "",
       details: "",
     },
   });
@@ -94,6 +99,7 @@ export function LogTimeDrawer({
         projectId: String(entry.projectId),
         date: formatUTCDateForInput(entry.date),
         hours: Number(entry.hours),
+        subcategory: entry.subcategory || "",
         details: entry.details || "",
       });
     } else {
@@ -107,10 +113,11 @@ export function LogTimeDrawer({
           return `${yyyy}-${mm}-${dd}`;
         })(),
         hours: 1,
+        subcategory: initialSubcategory || "",
         details: "",
       });
     }
-  }, [entry, reset, open, initialProjectId]);
+  }, [entry, reset, open, initialProjectId, initialSubcategory]);
 
   const onSubmit = async (data: FormData) => {
     setSaving(true);
@@ -161,6 +168,18 @@ export function LogTimeDrawer({
             </select>
             {errors.projectId && (
               <p className="text-xs text-destructive">{errors.projectId.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subcategory">Sub-Category</Label>
+            <Input
+              id="subcategory"
+              {...register("subcategory")}
+              placeholder="e.g., Hymn Book Design, Hymn Book Development"
+            />
+            {errors.subcategory && (
+              <p className="text-xs text-destructive">{errors.subcategory.message}</p>
             )}
           </div>
 

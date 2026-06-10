@@ -11,7 +11,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { projectId, date, hours, details } = body;
+    const { projectId, date, hours, subcategory, details } = body;
 
     if (hours !== undefined && (Number(hours) <= 0 || Number(hours) > 24)) {
       return NextResponse.json({ error: "Hours must be between 0.25 and 24" }, { status: 400 });
@@ -23,6 +23,7 @@ export async function PUT(
       updates.date = localDateToUTC(date);
     }
     if (hours !== undefined) updates.hours = String(hours);
+    if (subcategory !== undefined) updates.subcategory = subcategory || null;
     if (details !== undefined) updates.details = details || null;
 
     const [updated] = await db

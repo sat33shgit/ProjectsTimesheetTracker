@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { projects, timesheetEntries, figmaVersions, figmaUrls, settings } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { generateExcelBuffer } from "@/lib/utils/excel";
-import { formatDateISO } from "@/lib/utils/format";
 
 export async function GET() {
   try {
@@ -47,6 +46,7 @@ export async function GET() {
         projectName: projects.name,
         date: sql<string>`to_char(${timesheetEntries.date}, 'YYYY-MM-DD')`.as("date"),
         hours: timesheetEntries.hours,
+        subcategory: timesheetEntries.subcategory,
         details: timesheetEntries.details,
       })
       .from(timesheetEntries)
@@ -57,6 +57,7 @@ export async function GET() {
       projectName: e.projectName,
       date: e.date || "",
       hours: Number(e.hours),
+      subcategory: e.subcategory || "",
       details: e.details || "",
     }));
 

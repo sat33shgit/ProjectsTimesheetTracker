@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     }
     if (search) {
       conditions.push(
-        sql`(${projects.name} ILIKE ${"%" + search + "%"} OR ${timesheetEntries.details} ILIKE ${"%" + search + "%"})`
+        sql`(${projects.name} ILIKE ${"%" + search + "%"} OR ${timesheetEntries.subcategory} ILIKE ${"%" + search + "%"} OR ${timesheetEntries.details} ILIKE ${"%" + search + "%"})`
       );
     }
 
@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         projectName: projects.name,
         date: sql<string>`to_char(${timesheetEntries.date}, 'YYYY-MM-DD')`.as("date"),
         hours: timesheetEntries.hours,
+        subcategory: timesheetEntries.subcategory,
         details: timesheetEntries.details,
         createdAt: timesheetEntries.createdAt,
         updatedAt: timesheetEntries.updatedAt,
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { projectId, date, hours, details } = body;
+    const { projectId, date, hours, subcategory, details } = body;
 
     if (!projectId || !date || !hours) {
       return NextResponse.json({ error: "Project, date, and hours are required" }, { status: 400 });
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
         projectId: Number(projectId),
         date: localDateToUTC(date),
         hours: String(hours),
+        subcategory: subcategory || null,
         details: details || null,
       })
       .returning();

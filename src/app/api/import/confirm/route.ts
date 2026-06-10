@@ -88,6 +88,7 @@ export async function POST(request: Request) {
                   await db
                     .update(timesheetEntries)
                     .set({
+                      subcategory: row.subcategory || null,
                       details: row.details || null,
                       updatedAt: new Date(),
                     })
@@ -99,6 +100,7 @@ export async function POST(request: Request) {
                   projectId,
                   date,
                   hours: String(row.hours),
+                  subcategory: row.subcategory || null,
                   details: row.details || null,
                 });
                 timesheetImported++;

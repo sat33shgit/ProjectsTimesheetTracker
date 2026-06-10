@@ -31,7 +31,14 @@ interface TimesheetEntry {
   projectName: string;
   date: string;
   hours: string;
+  subcategory: string | null;
   details: string | null;
+}
+
+interface SubcategoryGroup {
+  subcategory: string;
+  totalHours: number;
+  entries: TimesheetEntry[];
 }
 
 interface GroupedEntries {
@@ -39,10 +46,9 @@ interface GroupedEntries {
   projectName: string;
   totalHours: number;
   entries: TimesheetEntry[];
+  subcategoryGroups: SubcategoryGroup[];
   firstDate: string;
   lastDate: string;
-  daysDifference: number;
-  monthsDiff: number;
   durationDisplay: string;
 }
 
@@ -60,9 +66,11 @@ export default function TimesheetContent() {
   const [dateTo, setDateTo] = useState("");
   const [filterProjectId, setFilterProjectId] = useState(presetProjectId || "");
   const [collapsedProjects, setCollapsedProjects] = useState<Record<number, boolean>>({});
+  const [collapsedSubcategories, setCollapsedSubcategories] = useState<Record<string, boolean>>({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editEntry, setEditEntry] = useState<TimesheetEntry | null>(null);
   const [initialProjectId, setInitialProjectId] = useState<string | null>(null);
+  const [initialSubcategory, setInitialSubcategory] = useState<string | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<TimesheetEntry | null>(null);
   const [settings, setSettings] = useState({ hourly_rate_cad: "10", conversion_rate_inr: "60" });
 
@@ -129,12 +137,27 @@ export default function TimesheetContent() {
         projectName: entry.projectName,
         totalHours: Number(entry.hours),
         entries: [entry],
-        firstDate: entry.date,
-        lastDate: entry.date,
-        daysDifference: 0,
-        monthsDiff: 0,
+        subcategoryGroups: [],
+        firstDate: "",
+        lastDate: "",
         durationDisplay: "",
       });
+    });
+
+    // Build subcategory sub-groups for each project
+    groups.forEach((group) => {
+      const subcatMap = new Map<string, SubcategoryGroup>();
+      group.entries.forEach((entry) => {
+        const key = entry.subcategory || "(No Subcategory)";
+        const existing = subcatMap.get(key);
+        if (existing) {
+          existing.entries.push(entry);
+          existing.totalHours += Number(entry.hours);
+        } else {
+          subcatMap.set(key, { subcategory: key, totalHours: Number(entry.hours), entries: [entry] });
+        }
+      });
+      group.subcategoryGroups = Array.from(subcatMap.values());
     });
 
     // Calculate date ranges for each group
@@ -143,23 +166,17 @@ export default function TimesheetContent() {
       const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
       const daysDifference = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Calculate months difference
-      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + 
+      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
                         (lastDate.getMonth() - firstDate.getMonth()) + 1;
-      
-      // Determine display unit
-      const durationDisplay = daysDifference > 31 
-        ? `${monthsDiff} month${monthsDiff !== 1 ? 's' : ''}` 
+      const durationDisplay = daysDifference > 31
+        ? `${monthsDiff} month${monthsDiff !== 1 ? 's' : ''}`
         : `${daysDifference} day${daysDifference !== 1 ? 's' : ''}`;
 
       return {
         ...group,
         firstDate: firstDate.toISOString().split('T')[0],
         lastDate: lastDate.toISOString().split('T')[0],
-        daysDifference,
-        monthsDiff,
-        durationDisplay
+        durationDisplay,
       };
     });
 
@@ -246,8 +263,15 @@ export default function TimesheetContent() {
     });
   };
 
+  const toggleSubcategoryCollapse = (key: string) => {
+    setCollapsedSubcategories((prev) => ({ ...prev, [key]: !(prev[key] ?? false) }));
+  };
+
   useEffect(() => {
-    if (!drawerOpen) setInitialProjectId(null);
+    if (!drawerOpen) {
+      setInitialProjectId(null);
+      setInitialSubcategory(null);
+    }
   }, [drawerOpen]);
 
   return (
@@ -310,6 +334,7 @@ export default function TimesheetContent() {
               <TableHead className="w-10">#</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Subcategory</TableHead>
               <TableHead className="text-right">Hours</TableHead>
               <TableHead>Details</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -319,14 +344,14 @@ export default function TimesheetContent() {
             {loading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  {[...Array(6)].map((_, j) => (
+                  {[...Array(7)].map((_, j) => (
                     <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
                   No timesheet entries found. Click &quot;Log Time&quot; to get started.
                 </TableCell>
               </TableRow>
@@ -337,7 +362,7 @@ export default function TimesheetContent() {
                 return (
                   <Fragment key={`group-wrap-${group.projectId}`}>
                     <TableRow key={`group-${group.projectId}`} className="bg-zinc-100/70">
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7}>
                         <div
                           role="button"
                           tabIndex={0}
@@ -368,44 +393,89 @@ export default function TimesheetContent() {
                             >
                               <Plus className="size-4" />
                             </Button>
-                             <span className="text-sm text-muted-foreground font-mono">
-                               {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
-                             </span>
+                            <span className="text-sm text-muted-foreground font-mono">
+                              {group.entries.length} entries | {group.totalHours.toFixed(2)} hrs
+                            </span>
                           </div>
                         </div>
                       </TableCell>
                     </TableRow>
-                    {!isCollapsed && group.entries.map((entry, i) => {
+                    {!isCollapsed && group.subcategoryGroups.map((subcatGroup) => {
+                      const subcatKey = `${group.projectId}::${subcatGroup.subcategory}`;
+                      const isSubcatCollapsed = collapsedSubcategories[subcatKey] ?? false;
                       return (
-                        <TableRow key={entry.id} className={i % 2 === 1 ? "bg-zinc-50/40" : ""}>
-                          <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
-                          <TableCell className="font-medium">{entry.projectName}</TableCell>
-                          <TableCell>{formatDate(entry.date)}</TableCell>
-                          <TableCell className="text-right font-mono">{Number(entry.hours).toFixed(2)} hrs</TableCell>
-                          <TableCell className="max-w-[200px] truncate text-muted-foreground">
-                            {entry.details || "-"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => { setEditEntry(entry); setDrawerOpen(true); }}
-                                aria-label="Edit entry"
+                        <Fragment key={`subcat-${subcatKey}`}>
+                          <TableRow className="bg-zinc-50 border-l-2 border-l-zinc-300">
+                            <TableCell colSpan={7}>
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => toggleSubcategoryCollapse(subcatKey)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSubcategoryCollapse(subcatKey); } }}
+                                className="flex w-full items-center justify-between gap-3 text-left pl-6"
+                                aria-expanded={!isSubcatCollapsed}
                               >
-                                <Pencil className="size-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteEntry(entry)}
-                                aria-label="Delete entry"
-                              >
-                                <Trash2 className="size-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                                <div className="flex items-center gap-2">
+                                  {isSubcatCollapsed ? <ChevronDown className="size-3.5 text-muted-foreground" /> : <ChevronUp className="size-3.5 text-muted-foreground" />}
+                                  <span className="text-sm font-medium text-zinc-700">{subcatGroup.subcategory}</span>
+                                  <span className="text-xs text-muted-foreground">{subcatGroup.entries.length} {subcatGroup.entries.length === 1 ? 'entry' : 'entries'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditEntry(null);
+                                      setInitialProjectId(String(group.projectId));
+                                      setInitialSubcategory(subcatGroup.subcategory === "(No Subcategory)" ? "" : subcatGroup.subcategory);
+                                      setDrawerOpen(true);
+                                    }}
+                                    aria-label={`Add entry to ${subcatGroup.subcategory}`}
+                                  >
+                                    <Plus className="size-3.5" />
+                                  </Button>
+                                  <span className="text-xs font-mono font-semibold text-zinc-600">{subcatGroup.totalHours.toFixed(2)} hrs</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {!isSubcatCollapsed && subcatGroup.entries.map((entry, i) => (
+                            <TableRow key={entry.id} className={i % 2 === 1 ? "bg-zinc-50/40" : ""}>
+                              <TableCell className="text-muted-foreground text-xs pl-12">{i + 1}</TableCell>
+                              <TableCell className="font-medium">{entry.projectName}</TableCell>
+                              <TableCell>{formatDate(entry.date)}</TableCell>
+                              <TableCell className="max-w-[150px] truncate text-muted-foreground">
+                                {entry.subcategory || "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">{Number(entry.hours).toFixed(2)} hrs</TableCell>
+                              <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                                {entry.details || "-"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => { setEditEntry(entry); setDrawerOpen(true); }}
+                                    aria-label="Edit entry"
+                                  >
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteEntry(entry)}
+                                    aria-label="Delete entry"
+                                  >
+                                    <Trash2 className="size-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </Fragment>
                       );
                     })}
                   </Fragment>
@@ -431,6 +501,7 @@ export default function TimesheetContent() {
         projects={projects}
         onSaved={fetchEntries}
         initialProjectId={initialProjectId}
+        initialSubcategory={initialSubcategory}
       />
 
       {/* Delete Confirmation */}

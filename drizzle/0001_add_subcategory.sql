@@ -1,0 +1,1 @@
+ALTER TABLE "timesheet_entries" ADD COLUMN "subcategory" varchar(255);

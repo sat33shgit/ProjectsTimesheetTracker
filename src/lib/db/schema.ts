@@ -13,6 +13,7 @@ export const timesheetEntries = pgTable("timesheet_entries", {
   projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   date: timestamp("date", { mode: "date" }).notNull(),
   hours: numeric("hours", { precision: 5, scale: 2 }).notNull(),
+  subcategory: varchar("subcategory", { length: 255 }),
   details: text("details"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

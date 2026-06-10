@@ -1,4 +1,4 @@
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { utcDateToLocal } from "./date";
 
 export function formatCurrency(amount: number, currency: "CAD" | "INR" = "CAD"): string {
