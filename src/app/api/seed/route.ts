@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects, timesheetEntries, figmaVersions, figmaUrls, settings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { requireAdminToken } from "@/lib/utils/api-auth";
 
 const SAMPLE_PROJECTS = [
   "Sketch Book", "YBH Ministries New", "YBH Ministries3", "Church Template",
@@ -233,7 +234,10 @@ const SAMPLE_FIGMA_URLS: { application: string; url: string; details: string }[]
   { application: "Budget Tracker", url: "https://www.figma.com/design/BudgTrack011", details: "Personal finance dashboard" },
 ];
 
-export async function POST() {
+export async function POST(request: Request) {
+  const authError = requireAdminToken(request);
+  if (authError) return authError;
+
   try {
     // Create projects
     const projectMap: Record<string, number> = {};

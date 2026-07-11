@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaUrls } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { parseId } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid url id" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { application, url, details } = body;
 
@@ -27,7 +33,7 @@ export async function PUT(
     const [updated] = await db
       .update(figmaUrls)
       .set(updates)
-      .where(eq(figmaUrls.id, Number(id)))
+      .where(eq(figmaUrls.id, id))
       .returning();
 
     if (!updated) {
@@ -46,10 +52,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid url id" }, { status: 400 });
+    }
+
     const [deleted] = await db
       .delete(figmaUrls)
-      .where(eq(figmaUrls.id, Number(id)))
+      .where(eq(figmaUrls.id, id))
       .returning();
 
     if (!deleted) {

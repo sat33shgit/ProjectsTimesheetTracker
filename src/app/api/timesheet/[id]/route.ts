@@ -3,13 +3,19 @@ import { db } from "@/lib/db";
 import { timesheetEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { localDateToUTC } from "@/lib/utils/date";
+import { parseId } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid entry id" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { projectId, date, hours, subcategory, details } = body;
 
@@ -29,7 +35,7 @@ export async function PUT(
     const [updated] = await db
       .update(timesheetEntries)
       .set(updates)
-      .where(eq(timesheetEntries.id, Number(id)))
+      .where(eq(timesheetEntries.id, id))
       .returning();
 
     if (!updated) {
@@ -48,10 +54,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid entry id" }, { status: 400 });
+    }
+
     const [deleted] = await db
       .delete(timesheetEntries)
-      .where(eq(timesheetEntries.id, Number(id)))
+      .where(eq(timesheetEntries.id, id))
       .returning();
 
     if (!deleted) {

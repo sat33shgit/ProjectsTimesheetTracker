@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaVersions } from "@/lib/db/schema";
 import { eq, desc, asc, sql, and } from "drizzle-orm";
+import { parseId } from "@/lib/utils/api-auth";
 
 export async function GET(request: Request) {
   try {
@@ -73,11 +74,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "IDs array is required" }, { status: 400 });
     }
 
-    for (const id of ids) {
-      await db.delete(figmaVersions).where(eq(figmaVersions.id, Number(id)));
+    const validIds = ids.map((id) => parseId(String(id))).filter((id): id is number => id !== null);
+    if (validIds.length === 0) {
+      return NextResponse.json({ error: "No valid IDs provided" }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, deleted: ids.length });
+    for (const id of validIds) {
+      await db.delete(figmaVersions).where(eq(figmaVersions.id, id));
+    }
+
+    return NextResponse.json({ success: true, deleted: validIds.length });
   } catch (error) {
     console.error("Failed to bulk delete figma versions:", error);
     return NextResponse.json({ error: "Failed to delete figma versions" }, { status: 500 });

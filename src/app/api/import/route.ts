@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { parseExcelBuffer } from "@/lib/utils/excel";
 
+const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_EXTENSIONS = [".xlsx", ".xls"];
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -8,6 +11,16 @@ export async function POST(request: Request) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const name = file.name || "";
+    const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext));
+    if (!hasAllowedExtension) {
+      return NextResponse.json({ error: "Only .xlsx or .xls files are supported" }, { status: 400 });
+    }
+
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      return NextResponse.json({ error: "File is too large (10MB max)" }, { status: 413 });
     }
 
     const buffer = await file.arrayBuffer();

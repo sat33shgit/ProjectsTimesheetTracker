@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+// Only these keys may be written via the API — prevents arbitrary
+// key/value rows being inserted into the settings table.
+const ALLOWED_SETTING_KEYS = new Set(["hourly_rate_cad", "conversion_rate_inr"]);
+
 export async function GET() {
   try {
     const allSettings = await db.select().from(settings);
@@ -28,6 +32,8 @@ export async function PUT(request: Request) {
 
     for (const [key, value] of Object.entries(body)) {
       if (typeof key !== "string" || typeof value !== "string") continue;
+      if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+      if (!Number.isFinite(Number(value)) || Number(value) < 0) continue;
 
       const existing = await db
         .select()

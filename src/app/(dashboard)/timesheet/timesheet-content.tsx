@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LogTimeDrawer } from "@/components/timesheet/log-time-drawer";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { Plus, Search, Pencil, Trash2, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Download, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate, formatCurrency } from "@/lib/utils/format";
 
@@ -166,11 +166,26 @@ export default function TimesheetContent() {
       const firstDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const lastDate = new Date(Math.max(...dates.map(d => d.getTime())));
       const daysDifference = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
-                        (lastDate.getMonth() - firstDate.getMonth()) + 1;
-      const durationDisplay = daysDifference > 31
-        ? `${monthsDiff} month${monthsDiff !== 1 ? 's' : ''}`
-        : `${daysDifference} day${daysDifference !== 1 ? 's' : ''}`;
+
+      // Exact calendar month/day difference (not a rounded approximation)
+      let months = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
+                   (lastDate.getMonth() - firstDate.getMonth());
+      let extraDays = lastDate.getDate() - firstDate.getDate();
+      if (extraDays < 0) {
+        months -= 1;
+        const prevMonthLastDay = new Date(lastDate.getFullYear(), lastDate.getMonth(), 0).getDate();
+        extraDays += prevMonthLastDay;
+      }
+
+      let durationDisplay: string;
+      if (months <= 0) {
+        durationDisplay = `${daysDifference} day${daysDifference !== 1 ? 's' : ''}`;
+      } else {
+        durationDisplay = `${months} month${months !== 1 ? 's' : ''}`;
+        if (extraDays > 0) {
+          durationDisplay += ` ${extraDays} day${extraDays !== 1 ? 's' : ''}`;
+        }
+      }
 
       return {
         ...group,
@@ -267,6 +282,32 @@ export default function TimesheetContent() {
     setCollapsedSubcategories((prev) => ({ ...prev, [key]: !(prev[key] ?? false) }));
   };
 
+  const expandAllGroups = () => {
+    setCollapsedProjects((prev) => {
+      const next: Record<number, boolean> = {};
+      for (const key of Object.keys(prev)) next[Number(key)] = false;
+      return next;
+    });
+    setCollapsedSubcategories({});
+  };
+
+  const collapseAllGroups = () => {
+    setCollapsedProjects((prev) => {
+      const next: Record<number, boolean> = {};
+      for (const key of Object.keys(prev)) next[Number(key)] = true;
+      return next;
+    });
+    setCollapsedSubcategories((prev) => {
+      const next: Record<string, boolean> = { ...prev };
+      groupedEntries.forEach((group) => {
+        group.subcategoryGroups.forEach((sub) => {
+          next[`${group.projectId}::${sub.subcategory}`] = true;
+        });
+      });
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!drawerOpen) {
       setInitialProjectId(null);
@@ -282,48 +323,71 @@ export default function TimesheetContent() {
           <h2 className="text-lg font-semibold">Timesheet</h2>
           <Badge variant="secondary" className="font-mono text-xs">{total} entries</Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="timesheet-search" className="text-xs font-medium text-muted-foreground">Search</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                id="timesheet-search"
+                placeholder="Search..."
+                className="pl-9 h-9 w-48"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="timesheet-date-from" className="text-xs font-medium text-muted-foreground">From</label>
             <Input
-              placeholder="Search..."
-              className="pl-9 h-9 w-48"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              id="timesheet-date-from"
+              type="date"
+              className="h-9 w-36"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
             />
           </div>
-          <Input
-            type="date"
-            className="h-9 w-36"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            aria-label="Date from"
-          />
-          <Input
-            type="date"
-            className="h-9 w-36"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            aria-label="Date to"
-          />
-          <select
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-            value={filterProjectId}
-            onChange={(e) => setFilterProjectId(e.target.value)}
-            aria-label="Filter by project"
-          >
-            <option value="">All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={String(p.id)}>{p.name}</option>
-            ))}
-          </select>
-          <Button size="sm" onClick={() => { setEditEntry(null); setInitialProjectId(null); setDrawerOpen(true); }}>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="timesheet-date-to" className="text-xs font-medium text-muted-foreground">To</label>
+            <Input
+              id="timesheet-date-to"
+              type="date"
+              className="h-9 w-36"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="timesheet-project-filter" className="text-xs font-medium text-muted-foreground">Project</label>
+            <select
+              id="timesheet-project-filter"
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
+              value={filterProjectId}
+              onChange={(e) => setFilterProjectId(e.target.value)}
+            >
+              <option value="">All Projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={String(p.id)}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <Button size="sm" className="h-9" onClick={() => { setEditEntry(null); setInitialProjectId(null); setDrawerOpen(true); }}>
             <Plus className="size-4 mr-1" /> Log Time
           </Button>
-          <Button size="sm" variant="ghost" onClick={handleExport} aria-label="Export Excel">
+          <Button size="sm" variant="ghost" className="h-9" onClick={handleExport} aria-label="Export Excel">
             <Download className="size-4" />
           </Button>
         </div>
+      </div>
+
+      {/* Group controls */}
+      <div className="flex items-center justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={expandAllGroups} aria-label="Expand all groups">
+          <ChevronsDown className="size-4 mr-1" /> Expand All
+        </Button>
+        <Button size="sm" variant="outline" onClick={collapseAllGroups} aria-label="Collapse all groups">
+          <ChevronsUp className="size-4 mr-1" /> Collapse All
+        </Button>
       </div>
 
       {/* Table */}

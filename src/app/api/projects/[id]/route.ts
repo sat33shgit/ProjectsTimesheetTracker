@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { parseId } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid project id" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { name, isActive } = body;
 
@@ -19,7 +25,7 @@ export async function PUT(
     const [updated] = await db
       .update(projects)
       .set(updates)
-      .where(eq(projects.id, Number(id)))
+      .where(eq(projects.id, id))
       .returning();
 
     if (!updated) {
@@ -42,10 +48,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid project id" }, { status: 400 });
+    }
+
     const [deleted] = await db
       .delete(projects)
-      .where(eq(projects.id, Number(id)))
+      .where(eq(projects.id, id))
       .returning();
 
     if (!deleted) {

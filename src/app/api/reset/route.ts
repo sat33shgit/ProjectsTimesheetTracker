@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects, timesheetEntries, figmaVersions, figmaUrls, settings } from "@/lib/db/schema";
+import { requireAdminToken } from "@/lib/utils/api-auth";
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
+  const authError = requireAdminToken(request);
+  if (authError) return authError;
+
   try {
     await db.delete(timesheetEntries);
     await db.delete(figmaVersions);

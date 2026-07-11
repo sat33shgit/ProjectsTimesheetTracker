@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaVersions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { parseId } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid version id" }, { status: 400 });
+    }
+
     const body = await request.json();
     const { application, version, details } = body;
 
@@ -20,7 +26,7 @@ export async function PUT(
     const [updated] = await db
       .update(figmaVersions)
       .set(updates)
-      .where(eq(figmaVersions.id, Number(id)))
+      .where(eq(figmaVersions.id, id))
       .returning();
 
     if (!updated) {
@@ -43,10 +49,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+    const id = parseId(rawId);
+    if (id === null) {
+      return NextResponse.json({ error: "Invalid version id" }, { status: 400 });
+    }
+
     const [deleted] = await db
       .delete(figmaVersions)
-      .where(eq(figmaVersions.id, Number(id)))
+      .where(eq(figmaVersions.id, id))
       .returning();
 
     if (!deleted) {
