@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaUrls } from "@/lib/db/schema";
 import { eq, sql, and } from "drizzle-orm";
+import { requireString, optionalText, sanitizeSearchTerm } from "@/lib/utils/api-auth";
 
 export async function GET(request: Request) {
   try {
@@ -15,8 +16,9 @@ export async function GET(request: Request) {
       conditions.push(eq(figmaUrls.application, application));
     }
     if (search) {
+      const term = "%" + sanitizeSearchTerm(search) + "%";
       conditions.push(
-        sql`(${figmaUrls.application} ILIKE ${"%" + search + "%"} OR ${figmaUrls.details} ILIKE ${"%" + search + "%"})`
+        sql`(${figmaUrls.application} ILIKE ${term} OR ${figmaUrls.details} ILIKE ${term})`
       );
     }
 
@@ -40,21 +42,28 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { application, url, details } = body;
 
-    if (!application || !url) {
+    const cleanApp = requireString(application, 255);
+    const cleanUrl = requireString(url, 2048);
+    if (cleanApp === null || cleanUrl === null) {
       return NextResponse.json({ error: "Application and URL are required" }, { status: 400 });
     }
 
-    const urlPattern = /^https?:\/\/(www\.)?figma\.com\/.+/i;
-    if (!urlPattern.test(url)) {
-      return NextResponse.json({ error: "Please provide a valid Figma URL" }, { status: 400 });
+    const urlPattern = /^https:\/\/(www\.)?figma\.com\/.+/i;
+    if (!urlPattern.test(cleanUrl)) {
+      return NextResponse.json({ error: "Please provide a valid Figma URL (https://figma.com/…)" }, { status: 400 });
+    }
+
+    const cleanDetails = optionalText(details);
+    if (cleanDetails === undefined) {
+      return NextResponse.json({ error: "Details is invalid or too long" }, { status: 400 });
     }
 
     const [entry] = await db
       .insert(figmaUrls)
       .values({
-        application: application.trim(),
-        url: url.trim(),
-        details: details || null,
+        application: cleanApp,
+        url: cleanUrl,
+        details: cleanDetails,
       })
       .returning();
 

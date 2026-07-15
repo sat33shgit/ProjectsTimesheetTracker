@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseId } from "@/lib/utils/api-auth";
+import { parseId, requireString } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
@@ -19,8 +19,14 @@ export async function PUT(
     const { name, isActive } = body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (name !== undefined) updates.name = name.trim();
-    if (isActive !== undefined) updates.isActive = isActive;
+    if (name !== undefined) {
+      const cleanName = requireString(name, 255);
+      if (cleanName === null) {
+        return NextResponse.json({ error: "Project name must be a non-empty string (max 255 chars)" }, { status: 400 });
+      }
+      updates.name = cleanName;
+    }
+    if (isActive !== undefined) updates.isActive = Boolean(isActive);
 
     const [updated] = await db
       .update(projects)

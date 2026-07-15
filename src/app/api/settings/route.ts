@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 // Only these keys may be written via the API — prevents arbitrary
 // key/value rows being inserted into the settings table.
@@ -33,22 +32,18 @@ export async function PUT(request: Request) {
     for (const [key, value] of Object.entries(body)) {
       if (typeof key !== "string" || typeof value !== "string") continue;
       if (!ALLOWED_SETTING_KEYS.has(key)) continue;
-      if (!Number.isFinite(Number(value)) || Number(value) < 0) continue;
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 0 || num > 1_000_000) continue;
 
-      const existing = await db
-        .select()
-        .from(settings)
-        .where(eq(settings.key, key))
-        .limit(1);
-
-      if (existing.length > 0) {
-        await db
-          .update(settings)
-          .set({ value, updatedAt: new Date() })
-          .where(eq(settings.key, key));
-      } else {
-        await db.insert(settings).values({ key, value });
-      }
+      // Atomic upsert — one statement instead of select-then-insert/update,
+      // which also avoids a race between concurrent requests.
+      await db
+        .insert(settings)
+        .values({ key, value })
+        .onConflictDoUpdate({
+          target: settings.key,
+          set: { value, updatedAt: new Date() },
+        });
     }
 
     return NextResponse.json({ success: true });

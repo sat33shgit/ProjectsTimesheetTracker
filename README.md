@@ -1,51 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Projects Timesheet Tracker
+
+A Next.js time tracking and project management dashboard built with TypeScript, Drizzle ORM, and Vercel Postgres.
+
+## Overview
+
+This app provides:
+
+- A dashboard with project earnings, total hours, and top project insights.
+- A timesheet page for logging and reviewing time entries.
+- Project management with active/inactive project support.
+- Settings for billing rates and currency conversion.
+- Figma version tracking and Figma URL management.
+- Excel import/export support for timesheet, Figma versions, and Figma URLs.
+- Admin seeding and reset endpoints protected by an admin token.
 
 ## Getting Started
 
-First, run the development server:
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Configure environment
+
+Create a `.env.local` file in the repository root with at least:
+
+```env
+POSTGRES_URL=postgres://user:password@localhost:5432/database
+ADMIN_API_TOKEN=your-admin-token
+```
+
+- `POSTGRES_URL` is required for the database connection.
+- `ADMIN_API_TOKEN` is optional but required for `/api/seed` and `/api/reset`.
+
+### Run development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` and the app will redirect to `/timesheet`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` — start development server
+- `npm run build` — compile production build
+- `npm start` — run production server
+- `npm run lint` — run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## App Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `src/app/(dashboard)` — dashboard layout and route groups
+- `src/app/(dashboard)/dashboard` — dashboard overview page
+- `src/app/(dashboard)/timesheet` — timesheet logs and entry drawer
+- `src/app/(dashboard)/settings` — project settings, import/export, and billing rates
+- `src/app/(dashboard)/figma-urls` — manage Figma URLs
+- `src/app/(dashboard)/figma-versions` — manage Figma version history
+- `src/lib/db` — Drizzle schema and database setup
+- `src/lib/utils` — helpers for date, format, Excel import, and auth
+
+## Database
+
+This project uses Drizzle ORM with `@vercel/postgres`.
+
+- Schema is defined in `src/lib/db/schema.ts`
+- Drizzle config is in `drizzle.config.ts`
+
+## Admin API
+
+If `ADMIN_API_TOKEN` is configured, you can seed or reset the database:
+
+```bash
+curl -X POST http://localhost:3000/api/seed -H "x-admin-token: your-admin-token"
+curl -X DELETE http://localhost:3000/api/reset -H "x-admin-token: your-admin-token"
+```
 
 ## Tech Stack
 
-- **Framework:** Next.js (v16.1.6) with the App Router
-- **UI / View:** React (v19.2.3)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS (v4) + PostCSS
-- **ORM / Database:** Drizzle ORM / drizzle-kit and @vercel/postgres
-- **State Management:** Zustand
-- **Forms & Validation:** react-hook-form, @hookform/resolvers, Zod
-- **Charts & Visualization:** Recharts
-- **Icons & UI Utilities:** Lucide React, @base-ui/react, clsx, class-variance-authority, cmdk
-- **Dates & Utils:** date-fns
-- **Excel import/export:** xlsx
-- **Toasts / Notifications:** sonner
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Drizzle ORM / drizzle-kit
+- @vercel/postgres
+- Zustand
+- react-hook-form + Zod
+- Recharts
+- Lucide React
+- @base-ui/react
+- date-fns
+- xlsx
+- sonner
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The app uses Vercel-style Postgres integration, but any Postgres-compatible database works with a valid connection URL.
+- `/api/settings` persists billing rates and project configurations.
+- Excel import/export is available from the settings page.

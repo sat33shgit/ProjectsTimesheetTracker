@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
+import { requireString } from "@/lib/utils/api-auth";
 
 export async function GET() {
   try {
@@ -17,13 +18,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, isActive = true } = body;
 
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json({ error: "Project name is required" }, { status: 400 });
+    const cleanName = requireString(name, 255);
+    if (cleanName === null) {
+      return NextResponse.json({ error: "Project name is required (max 255 chars)" }, { status: 400 });
     }
 
     const [project] = await db
       .insert(projects)
-      .values({ name: name.trim(), isActive })
+      .values({ name: cleanName, isActive: Boolean(isActive) })
       .returning();
 
     return NextResponse.json(project, { status: 201 });

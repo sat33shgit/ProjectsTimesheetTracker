@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projects, timesheetEntries, figmaVersions, figmaUrls, settings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { requireAdminToken } from "@/lib/utils/api-auth";
 
 const SAMPLE_PROJECTS = [
@@ -239,67 +239,68 @@ export async function POST(request: Request) {
   if (authError) return authError;
 
   try {
-    // Create projects
+    // Create projects — one lookup, then batched insert of the missing ones
     const projectMap: Record<string, number> = {};
-    for (const name of SAMPLE_PROJECTS) {
-      const existing = await db.select().from(projects).where(eq(projects.name, name)).limit(1);
-      if (existing.length > 0) {
-        projectMap[name] = existing[0].id;
-      } else {
-        const [created] = await db.insert(projects).values({ name }).returning();
-        projectMap[name] = created.id;
-      }
+    const existingProjects = await db
+      .select({ id: projects.id, name: projects.name })
+      .from(projects)
+      .where(inArray(projects.name, SAMPLE_PROJECTS));
+    for (const p of existingProjects) projectMap[p.name] = p.id;
+
+    const missing = SAMPLE_PROJECTS.filter((name) => !(name in projectMap));
+    if (missing.length > 0) {
+      const created = await db
+        .insert(projects)
+        .values(missing.map((name) => ({ name })))
+        .returning({ id: projects.id, name: projects.name });
+      for (const p of created) projectMap[p.name] = p.id;
     }
 
-    // Create timesheet entries
-    let tsCount = 0;
-    for (const entry of SAMPLE_TIMESHEET) {
-      const projectId = projectMap[entry.project];
-      if (!projectId) continue;
-      await db.insert(timesheetEntries).values({
-        projectId,
+    // Create timesheet entries — single batched insert
+    const tsValues = SAMPLE_TIMESHEET
+      .filter((entry) => projectMap[entry.project])
+      .map((entry) => ({
+        projectId: projectMap[entry.project],
         date: new Date(entry.date),
         hours: String(entry.hours),
         details: entry.details,
-      });
-      tsCount++;
-    }
+      }));
+    if (tsValues.length > 0) await db.insert(timesheetEntries).values(tsValues);
+    const tsCount = tsValues.length;
 
-    // Create figma versions
+    // Create figma versions — batched insert, duplicates skipped in one statement
     let fvCount = 0;
-    for (const v of SAMPLE_FIGMA_VERSIONS) {
-      try {
-        await db.insert(figmaVersions).values({
+    if (SAMPLE_FIGMA_VERSIONS.length > 0) {
+      const inserted = await db
+        .insert(figmaVersions)
+        .values(SAMPLE_FIGMA_VERSIONS.map((v) => ({
           application: v.application,
           version: v.version,
           details: v.details,
-        });
-        fvCount++;
-      } catch {
-        // Skip duplicates
-      }
+        })))
+        .onConflictDoNothing()
+        .returning({ id: figmaVersions.id });
+      fvCount = inserted.length;
     }
 
-    // Create figma urls
+    // Create figma urls — batched insert
     let fuCount = 0;
-    for (const u of SAMPLE_FIGMA_URLS) {
-      await db.insert(figmaUrls).values({
+    if (SAMPLE_FIGMA_URLS.length > 0) {
+      await db.insert(figmaUrls).values(SAMPLE_FIGMA_URLS.map((u) => ({
         application: u.application,
         url: u.url,
         details: u.details,
-      });
-      fuCount++;
+      })));
+      fuCount = SAMPLE_FIGMA_URLS.length;
     }
 
-    // Set default settings
-    const existingRate = await db.select().from(settings).where(eq(settings.key, "hourly_rate_cad")).limit(1);
-    if (existingRate.length === 0) {
-      await db.insert(settings).values({ key: "hourly_rate_cad", value: "10" });
-    }
-    const existingConv = await db.select().from(settings).where(eq(settings.key, "conversion_rate_inr")).limit(1);
-    if (existingConv.length === 0) {
-      await db.insert(settings).values({ key: "conversion_rate_inr", value: "60" });
-    }
+    // Set default settings — atomic upserts (no-op if the key already exists)
+    await db.insert(settings)
+      .values([
+        { key: "hourly_rate_cad", value: "10" },
+        { key: "conversion_rate_inr", value: "60" },
+      ])
+      .onConflictDoNothing();
 
     return NextResponse.json({
       success: true,

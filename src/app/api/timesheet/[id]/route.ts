@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { timesheetEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { localDateToUTC } from "@/lib/utils/date";
-import { parseId } from "@/lib/utils/api-auth";
+import { parseId, parseHours, isValidDateString, optionalText } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
@@ -19,18 +19,42 @@ export async function PUT(
     const body = await request.json();
     const { projectId, date, hours, subcategory, details } = body;
 
-    if (hours !== undefined && (Number(hours) <= 0 || Number(hours) > 24)) {
-      return NextResponse.json({ error: "Hours must be between 0.25 and 24" }, { status: 400 });
-    }
-
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (projectId !== undefined) updates.projectId = Number(projectId);
+
+    if (projectId !== undefined) {
+      const parsedProjectId = parseId(String(projectId));
+      if (parsedProjectId === null) {
+        return NextResponse.json({ error: "Invalid project" }, { status: 400 });
+      }
+      updates.projectId = parsedProjectId;
+    }
     if (date !== undefined) {
+      if (!isValidDateString(date)) {
+        return NextResponse.json({ error: "Invalid date (expected YYYY-MM-DD)" }, { status: 400 });
+      }
       updates.date = localDateToUTC(date);
     }
-    if (hours !== undefined) updates.hours = String(hours);
-    if (subcategory !== undefined) updates.subcategory = subcategory || null;
-    if (details !== undefined) updates.details = details || null;
+    if (hours !== undefined) {
+      const parsedHours = parseHours(hours);
+      if (parsedHours === null) {
+        return NextResponse.json({ error: "Hours must be between 0.25 and 24" }, { status: 400 });
+      }
+      updates.hours = String(parsedHours);
+    }
+    if (subcategory !== undefined) {
+      const clean = optionalText(subcategory, 255);
+      if (clean === undefined) {
+        return NextResponse.json({ error: "Subcategory is invalid or too long" }, { status: 400 });
+      }
+      updates.subcategory = clean;
+    }
+    if (details !== undefined) {
+      const clean = optionalText(details);
+      if (clean === undefined) {
+        return NextResponse.json({ error: "Details is invalid or too long" }, { status: 400 });
+      }
+      updates.details = clean;
+    }
 
     const [updated] = await db
       .update(timesheetEntries)

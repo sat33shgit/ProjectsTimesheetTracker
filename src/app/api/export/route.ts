@@ -85,7 +85,7 @@ export async function GET() {
       details: e.details || "",
     }));
 
-    const buffer = generateExcelBuffer({
+    const buffer = await generateExcelBuffer({
       dashboardSummary: {
         rate: hourlyRate,
         projects: dashProjects,

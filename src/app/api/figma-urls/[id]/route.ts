@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaUrls } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseId } from "@/lib/utils/api-auth";
+import { parseId, requireString, optionalText } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
@@ -18,17 +18,29 @@ export async function PUT(
     const body = await request.json();
     const { application, url, details } = body;
 
-    if (url !== undefined) {
-      const urlPattern = /^https?:\/\/(www\.)?figma\.com\/.+/i;
-      if (!urlPattern.test(url)) {
-        return NextResponse.json({ error: "Please provide a valid Figma URL" }, { status: 400 });
-      }
-    }
-
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (application !== undefined) updates.application = application.trim();
-    if (url !== undefined) updates.url = url.trim();
-    if (details !== undefined) updates.details = details || null;
+    if (url !== undefined) {
+      const cleanUrl = requireString(url, 2048);
+      const urlPattern = /^https:\/\/(www\.)?figma\.com\/.+/i;
+      if (cleanUrl === null || !urlPattern.test(cleanUrl)) {
+        return NextResponse.json({ error: "Please provide a valid Figma URL (https://figma.com/…)" }, { status: 400 });
+      }
+      updates.url = cleanUrl;
+    }
+    if (application !== undefined) {
+      const cleanApp = requireString(application, 255);
+      if (cleanApp === null) {
+        return NextResponse.json({ error: "Application must be a non-empty string" }, { status: 400 });
+      }
+      updates.application = cleanApp;
+    }
+    if (details !== undefined) {
+      const clean = optionalText(details);
+      if (clean === undefined) {
+        return NextResponse.json({ error: "Details is invalid or too long" }, { status: 400 });
+      }
+      updates.details = clean;
+    }
 
     const [updated] = await db
       .update(figmaUrls)

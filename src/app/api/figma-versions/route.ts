@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaVersions } from "@/lib/db/schema";
-import { eq, desc, asc, sql, and } from "drizzle-orm";
-import { parseId } from "@/lib/utils/api-auth";
+import { eq, desc, asc, sql, and, inArray } from "drizzle-orm";
+import { parseId, requireString, optionalText, sanitizeSearchTerm } from "@/lib/utils/api-auth";
 
 export async function GET(request: Request) {
   try {
@@ -16,8 +16,9 @@ export async function GET(request: Request) {
       conditions.push(eq(figmaVersions.application, application));
     }
     if (search) {
+      const term = "%" + sanitizeSearchTerm(search) + "%";
       conditions.push(
-        sql`(${figmaVersions.application} ILIKE ${"%" + search + "%"} OR ${figmaVersions.details} ILIKE ${"%" + search + "%"})`
+        sql`(${figmaVersions.application} ILIKE ${term} OR ${figmaVersions.details} ILIKE ${term})`
       );
     }
 
@@ -41,16 +42,22 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { application, version, details } = body;
 
-    if (!application || !version) {
-      return NextResponse.json({ error: "Application and version are required" }, { status: 400 });
+    const cleanApp = requireString(application, 255);
+    const versionNum = Number(version);
+    if (cleanApp === null || !Number.isSafeInteger(versionNum) || versionNum <= 0) {
+      return NextResponse.json({ error: "Application and a positive integer version are required" }, { status: 400 });
+    }
+    const cleanDetails = optionalText(details);
+    if (cleanDetails === undefined) {
+      return NextResponse.json({ error: "Details is invalid or too long" }, { status: 400 });
     }
 
     const [entry] = await db
       .insert(figmaVersions)
       .values({
-        application: application.trim(),
-        version: Number(version),
-        details: details || null,
+        application: cleanApp,
+        version: versionNum,
+        details: cleanDetails,
       })
       .returning();
 
@@ -79,11 +86,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "No valid IDs provided" }, { status: 400 });
     }
 
-    for (const id of validIds) {
-      await db.delete(figmaVersions).where(eq(figmaVersions.id, id));
-    }
+    // Single statement instead of one DELETE per id.
+    const deleted = await db
+      .delete(figmaVersions)
+      .where(inArray(figmaVersions.id, validIds))
+      .returning({ id: figmaVersions.id });
 
-    return NextResponse.json({ success: true, deleted: validIds.length });
+    return NextResponse.json({ success: true, deleted: deleted.length });
   } catch (error) {
     console.error("Failed to bulk delete figma versions:", error);
     return NextResponse.json({ error: "Failed to delete figma versions" }, { status: 500 });

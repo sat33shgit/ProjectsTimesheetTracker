@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { figmaVersions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseId } from "@/lib/utils/api-auth";
+import { parseId, requireString, optionalText } from "@/lib/utils/api-auth";
 
 export async function PUT(
   request: Request,
@@ -19,9 +19,27 @@ export async function PUT(
     const { application, version, details } = body;
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
-    if (application !== undefined) updates.application = application.trim();
-    if (version !== undefined) updates.version = Number(version);
-    if (details !== undefined) updates.details = details || null;
+    if (application !== undefined) {
+      const cleanApp = requireString(application, 255);
+      if (cleanApp === null) {
+        return NextResponse.json({ error: "Application must be a non-empty string" }, { status: 400 });
+      }
+      updates.application = cleanApp;
+    }
+    if (version !== undefined) {
+      const versionNum = Number(version);
+      if (!Number.isSafeInteger(versionNum) || versionNum <= 0) {
+        return NextResponse.json({ error: "Version must be a positive integer" }, { status: 400 });
+      }
+      updates.version = versionNum;
+    }
+    if (details !== undefined) {
+      const clean = optionalText(details);
+      if (clean === undefined) {
+        return NextResponse.json({ error: "Details is invalid or too long" }, { status: 400 });
+      }
+      updates.details = clean;
+    }
 
     const [updated] = await db
       .update(figmaVersions)

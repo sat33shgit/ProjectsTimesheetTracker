@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { parseExcelBuffer } from "@/lib/utils/excel";
 
 const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
-const ALLOWED_EXTENSIONS = [".xlsx", ".xls"];
+const ALLOWED_EXTENSIONS = [".xlsx"];
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const name = file.name || "";
     const hasAllowedExtension = ALLOWED_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext));
     if (!hasAllowedExtension) {
-      return NextResponse.json({ error: "Only .xlsx or .xls files are supported" }, { status: 400 });
+      return NextResponse.json({ error: "Only .xlsx files are supported" }, { status: 400 });
     }
 
     if (file.size > MAX_IMPORT_FILE_BYTES) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = await file.arrayBuffer();
-    const preview = parseExcelBuffer(buffer);
+    const preview = await parseExcelBuffer(buffer);
 
     return NextResponse.json({
       timesheetCount: preview.timesheet.length,
